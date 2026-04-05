@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "Tab Suspender",
+  "version": "0.0.1",
+  "description": "Manually suspend tabs to free up memory without closing them.",
+  "permissions": ["tabs"],
+  "action": {
+    "default_title": "Tab Suspender",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
