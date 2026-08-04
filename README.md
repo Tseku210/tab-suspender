@@ -4,7 +4,9 @@ A minimal Chrome/Brave browser extension (Manifest V3) for manually suspending t
 
 ![Tab Suspender popup showing a list of tabs with Suspend and Reload buttons](docs/screenshot.png)
 
-▶️ [Watch the demo video](https://youtu.be/gndLvlQxoVs)
+## Demo
+
+[![Watch the demo video](https://img.youtube.com/vi/gndLvlQxoVs/maxresdefault.jpg)](https://youtu.be/gndLvlQxoVs)
 
 ## Features
 
