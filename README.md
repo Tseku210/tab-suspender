@@ -14,9 +14,15 @@ A minimal Chrome/Brave browser extension (Manifest V3) for manually suspending t
 
 ## Install (unpacked)
 
-1. Open `chrome://extensions` (or `brave://extensions`)
-2. Enable **Developer mode**
-3. Click **Load unpacked** and select this folder
+1. Clone this repository:
+
+   ```bash
+   git clone https://github.com/Tseku210/tab-suspender.git
+   ```
+
+2. Open `chrome://extensions` (or `brave://extensions`)
+3. Enable **Developer mode**
+4. Click **Load unpacked** and select the cloned folder
 
 ## Files
 
