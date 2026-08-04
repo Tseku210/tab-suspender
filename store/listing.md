@@ -39,6 +39,10 @@ English
 - **Remote code:** No
 - **Data usage:** Does not collect or transmit any user data.
 
+## Promotional video
+Paste into the "Promotional video" field on the Store listing tab (YouTube URL only — no file upload):
+https://youtu.be/gndLvlQxoVs
+
 ## Assets
 - Store icon 128×128: `../icons/icon128.png`
 - Screenshot 1280×800: `screenshot-1280x800.png`
