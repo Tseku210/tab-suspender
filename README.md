@@ -2,11 +2,12 @@
 
 A minimal Chrome/Brave browser extension (Manifest V3) for manually suspending tabs to free up memory without closing them.
 
-![Tab Suspender popup showing a list of tabs with Suspend and Reload buttons](docs/screenshot.png)
+![Tab Suspender popup showing a list of tabs with Suspend and Reload buttons](store/screenshot-1280x800.png)
 
 ## Demo
 
-[![Watch the demo video](https://img.youtube.com/vi/gndLvlQxoVs/maxresdefault.jpg)](https://youtu.be/gndLvlQxoVs)
+https://github.com/user-attachments/assets/30cf90ee-01ea-4eed-b647-cf6d624c21f7
+
 
 ## Features
 
