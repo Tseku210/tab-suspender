@@ -24,13 +24,7 @@ function getFaviconUrl(tab) {
   if (tab.favIconUrl && !tab.favIconUrl.startsWith("chrome://")) {
     return tab.favIconUrl;
   }
-  // Fallback: use Google's favicon service
-  try {
-    const hostname = new URL(tab.url).hostname;
-    return `https://www.google.com/s2/favicons?domain=${hostname}&sz=32`;
-  } catch {
-    return "";
-  }
+  return "";
 }
 
 function getTabBadges(tab) {
@@ -65,13 +59,23 @@ function showError(message) {
 
 // --- Row construction ---
 
+function createFaviconFallback(tab) {
+  const tile = document.createElement("span");
+  tile.className = "tab-favicon tab-favicon-fallback";
+  const hostname = getHostname(tab.url || "");
+  tile.textContent = hostname ? hostname[0].toUpperCase() : "?";
+  return tile;
+}
+
 function createFavicon(tab) {
+  const src = getFaviconUrl(tab);
+  if (!src) return createFaviconFallback(tab);
   const favicon = document.createElement("img");
   favicon.className = "tab-favicon";
   favicon.alt = "";
   // Attach onerror BEFORE setting src so cached failures are still handled.
-  favicon.onerror = () => favicon.classList.add("is-hidden");
-  favicon.src = getFaviconUrl(tab);
+  favicon.onerror = () => favicon.replaceWith(createFaviconFallback(tab));
+  favicon.src = src;
   return favicon;
 }
 
