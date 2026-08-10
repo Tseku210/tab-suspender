@@ -1,4 +1,4 @@
-const UNSUSPENDABLE_PREFIXES = [
+const INTERNAL_URL_PREFIXES = [
   "chrome://",
   "chrome-extension://",
   "about:",
@@ -9,7 +9,7 @@ const ERROR_DISPLAY_MS = 4000;
 const RENDER_DEBOUNCE_MS = 50;
 
 function isInternalUrl(url) {
-  return !url || UNSUSPENDABLE_PREFIXES.some((p) => url.startsWith(p));
+  return !url || INTERNAL_URL_PREFIXES.some((p) => url.startsWith(p));
 }
 
 function getHostname(url) {
@@ -36,13 +36,13 @@ function getFaviconUrl(tab) {
 function getTabBadges(tab) {
   const badges = [];
   if (tab.active) badges.push({ label: "Active", class: "badge-active" });
-  if (tab.discarded) badges.push({ label: "Suspended", class: "badge-suspended" });
+  if (tab.discarded) badges.push({ label: "Asleep", class: "badge-asleep" });
   if (tab.pinned) badges.push({ label: "Pinned", class: "badge-pinned" });
   if (tab.audible) badges.push({ label: "Playing", class: "badge-audible" });
   return badges;
 }
 
-function canSuspend(tab) {
+function canSleep(tab) {
   if (tab.active || tab.pinned || tab.audible || tab.discarded) return false;
   if (isInternalUrl(tab.url)) return false;
   return true;
@@ -80,28 +80,28 @@ function createActionButton(tab) {
     const btn = document.createElement("button");
     btn.className = "tab-action";
     btn.type = "button";
-    btn.textContent = "Reload";
+    btn.textContent = "Wake";
     btn.addEventListener("click", async (e) => {
       e.stopPropagation();
       try {
         await chrome.tabs.reload(tab.id);
       } catch (err) {
-        showError(`Could not reload tab: ${err.message}`);
+        showError(`Could not wake tab: ${err.message}`);
       }
     });
     return btn;
   }
-  if (canSuspend(tab)) {
+  if (canSleep(tab)) {
     const btn = document.createElement("button");
     btn.className = "tab-action";
     btn.type = "button";
-    btn.textContent = "Suspend";
+    btn.textContent = "Sleep";
     btn.addEventListener("click", async (e) => {
       e.stopPropagation();
       try {
         await chrome.tabs.discard(tab.id);
       } catch (err) {
-        showError(`Could not suspend tab: ${err.message}`);
+        showError(`Could not put tab to sleep: ${err.message}`);
       }
     });
     return btn;
@@ -113,7 +113,7 @@ function createTabRow(tab) {
   const item = document.createElement("div");
   item.className = "tab-item";
   if (tab.active) item.classList.add("is-active");
-  if (tab.discarded) item.classList.add("is-suspended");
+  if (tab.discarded) item.classList.add("is-asleep");
 
   const main = document.createElement("button");
   main.className = "tab-item-main";
@@ -175,8 +175,8 @@ async function renderTabs() {
   const list = document.getElementById("tab-list");
   const stats = document.getElementById("stats");
 
-  const suspended = tabs.filter((t) => t.discarded).length;
-  stats.textContent = `${tabs.length} tabs · ${suspended} suspended`;
+  const asleep = tabs.filter((t) => t.discarded).length;
+  stats.textContent = `${tabs.length} tabs · ${asleep} asleep`;
 
   const fragment = document.createDocumentFragment();
   for (const tab of tabs) {
@@ -211,35 +211,35 @@ chrome.tabs.onReplaced.addListener(scheduleRender);
 
 // --- Bulk actions ---
 
-document.getElementById("suspend-others").addEventListener("click", async () => {
+document.getElementById("sleep-others").addEventListener("click", async () => {
   try {
     const tabs = await chrome.tabs.query({ currentWindow: true });
-    const targets = tabs.filter(canSuspend);
+    const targets = tabs.filter(canSleep);
     await Promise.all(
       targets.map((t) =>
         chrome.tabs.discard(t.id).catch((err) => {
-          showError(`Could not suspend "${t.title}": ${err.message}`);
+          showError(`Could not put "${t.title}" to sleep: ${err.message}`);
         })
       )
     );
   } catch (err) {
-    showError(`Could not suspend tabs: ${err.message}`);
+    showError(`Could not put tabs to sleep: ${err.message}`);
   }
 });
 
-document.getElementById("unsuspend-all").addEventListener("click", async () => {
+document.getElementById("wake-all").addEventListener("click", async () => {
   try {
     const tabs = await chrome.tabs.query({ currentWindow: true });
     const targets = tabs.filter((t) => t.discarded);
     await Promise.all(
       targets.map((t) =>
         chrome.tabs.reload(t.id).catch((err) => {
-          showError(`Could not reload "${t.title}": ${err.message}`);
+          showError(`Could not wake "${t.title}": ${err.message}`);
         })
       )
     );
   } catch (err) {
-    showError(`Could not reload tabs: ${err.message}`);
+    showError(`Could not wake tabs: ${err.message}`);
   }
 });
 

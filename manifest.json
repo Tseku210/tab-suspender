@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Tab Suspender",
   "version": "1.0.0",
-  "description": "Manually suspend tabs to free up memory without closing them.",
+  "description": "Manually put tabs to sleep to free up memory without closing them.",
   "permissions": ["tabs"],
   "action": {
     "default_title": "Tab Suspender",
