@@ -11,6 +11,7 @@ export default [
         URL: "readonly",
         setTimeout: "readonly",
         clearTimeout: "readonly",
+        localStorage: "readonly",
       },
     },
     rules: {
