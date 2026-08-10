@@ -14,7 +14,7 @@ function isInternalUrl(url) {
 
 function getHostname(url) {
   try {
-    return new URL(url).hostname.replace("www.", "");
+    return new URL(url).hostname.replace(/^www\./, "");
   } catch {
     return url;
   }
