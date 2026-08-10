@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body {
+        width: 1280px;
+        height: 800px;
+        overflow: hidden;
+        position: relative;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: linear-gradient(135deg, #6c5ce7 0%, #4834d4 55%, #3d2ec4 100%);
+      }
+      .blob {
+        position: absolute;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.05);
+      }
+      .blob1 { width: 520px; height: 520px; left: -160px; bottom: -220px; }
+      .blob2 { width: 340px; height: 340px; right: -90px; top: -120px; }
+
+      .left {
+        position: absolute;
+        left: 100px;
+        top: 130px;
+        width: 560px;
+        color: #fff;
+      }
+      .app-icon {
+        width: 128px;
+        height: 128px;
+        border-radius: 28px;
+        margin-bottom: 44px;
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+      }
+      h1 {
+        font-size: 58px;
+        font-weight: 700;
+        letter-spacing: -0.5px;
+        margin-bottom: 22px;
+      }
+      .tagline {
+        font-size: 25px;
+        font-weight: 400;
+        color: rgba(255, 255, 255, 0.75);
+        margin-bottom: 44px;
+      }
+      .bullets { list-style: none; }
+      .bullets li {
+        font-size: 19px;
+        line-height: 1.4;
+        margin-bottom: 20px;
+        color: rgba(255, 255, 255, 0.92);
+        display: flex;
+        gap: 12px;
+        align-items: baseline;
+      }
+      .bullets li::before {
+        content: "✔";
+        color: #6ee7a0;
+        font-size: 17px;
+      }
+
+      /* --- Popup mockup --- */
+      .popup-card {
+        position: absolute;
+        right: 80px;
+        top: 88px;
+        width: 454px;
+        background: #1a1a1a;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.28);
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+        overflow: hidden;
+        color: #e2e2e2;
+        font-size: 16.4px;
+        padding-bottom: 6px;
+      }
+      .p-header { padding: 15px 18px 10px; border-bottom: 1px solid #2a2a2a; }
+      .p-top { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+      .p-top h2 { font-size: 17.6px; font-weight: 600; color: #fff; }
+      .p-stats { margin-left: auto; font-size: 13.9px; color: #888; }
+      .p-theme { font-size: 16.4px; color: #888; }
+      .p-actions { display: flex; gap: 8px; }
+      .p-btn {
+        padding: 6px 13px;
+        border: 1px solid #333;
+        border-radius: 8px;
+        background: #242424;
+        color: #ccc;
+        font-size: 13.9px;
+      }
+      .p-btn-primary { background: #2a4a8a; border-color: #3a5a9a; color: #cde; }
+
+      .p-group {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        padding: 10px 18px 4px;
+      }
+      .p-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+      .p-group span:nth-child(2) {
+        flex: 1;
+        font-size: 13.3px;
+        font-weight: 600;
+        color: #999;
+      }
+      .p-row {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        padding: 9px 18px;
+      }
+      .p-row.active { background: #1e2a3a; }
+      .p-row.asleep .p-main { opacity: 0.45; }
+      .p-main { display: flex; align-items: center; gap: 11px; flex: 1; min-width: 0; }
+      .p-fav {
+        width: 20px;
+        height: 20px;
+        border-radius: 3px;
+        background: #2e2e2e;
+        color: #999;
+        font-size: 11px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      .p-info { min-width: 0; flex: 1; }
+      .p-title {
+        font-size: 15.8px;
+        line-height: 1.3;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .p-url { font-size: 13.2px; color: #666; line-height: 1.2; }
+      .p-badge {
+        font-size: 12px;
+        padding: 3px 8px;
+        border-radius: 5px;
+        font-weight: 500;
+        flex-shrink: 0;
+      }
+      .b-active { background: #1e3a2a; color: #6c9; }
+      .b-asleep { background: #2a2520; color: #a98; }
+      .b-pinned { background: #2a2535; color: #a8b; }
+      .p-action {
+        padding: 4px 10px;
+        border: 1px solid #333;
+        border-radius: 6px;
+        background: #242424;
+        color: #aaa;
+        font-size: 13.2px;
+        flex-shrink: 0;
+      }
+      .p-divider { margin: 8px 0 3px; border-top: 1px solid #2a2a2a; }
+    </style>
+  </head>
+  <body>
+    <div class="blob blob1"></div>
+    <div class="blob blob2"></div>
+
+    <div class="left">
+      <img class="app-icon" src="../icons/icon128.png" alt="" />
+      <h1>Tab Suspender</h1>
+      <div class="tagline">One click to free up memory — without closing tabs.</div>
+      <ul class="bullets">
+        <li>Sleep any tab, a whole group, or everything at once</li>
+        <li>Sleeping tabs stay in place — wake them when you need them</li>
+        <li>No background process, no tracking, under 14 KB</li>
+      </ul>
+    </div>
+
+    <div class="popup-card">
+      <div class="p-header">
+        <div class="p-top">
+          <h2>Tab Suspender</h2>
+          <span class="p-stats">7 tabs, ~240 MB freed</span>
+          <span class="p-theme">☀</span>
+        </div>
+        <div class="p-actions">
+          <span class="p-btn p-btn-primary">Sleep Others (3)</span>
+          <span class="p-btn">Wake All (2)</span>
+          <span class="p-btn">Select</span>
+        </div>
+      </div>
+
+      <div class="p-group">
+        <span class="p-dot" style="background: #5a8ae0"></span>
+        <span>work</span>
+        <span class="p-action">Sleep</span>
+      </div>
+      <div class="p-row active">
+        <div class="p-main">
+          <span class="p-fav">G</span>
+          <div class="p-info">
+            <div class="p-title">tsekuu/tab-suspender: Put tabs to sleep</div>
+            <div class="p-url">github.com</div>
+          </div>
+        </div>
+        <span class="p-badge b-active">Active</span>
+      </div>
+      <div class="p-row">
+        <div class="p-main">
+          <span class="p-fav">F</span>
+          <div class="p-info">
+            <div class="p-title">Design system — Homepage</div>
+            <div class="p-url">figma.com</div>
+          </div>
+        </div>
+        <span class="p-action">Sleep</span>
+      </div>
+
+      <div class="p-group">
+        <span class="p-dot" style="background: #e09a5a"></span>
+        <span>reading</span>
+        <span class="p-action">Wake</span>
+      </div>
+      <div class="p-row asleep">
+        <div class="p-main">
+          <span class="p-fav">H</span>
+          <div class="p-info">
+            <div class="p-title">Hacker News</div>
+            <div class="p-url">news.ycombinator.com</div>
+          </div>
+        </div>
+        <span class="p-badge b-asleep">Asleep</span>
+        <span class="p-action">Wake</span>
+      </div>
+      <div class="p-row asleep">
+        <div class="p-main">
+          <span class="p-fav">N</span>
+          <div class="p-info">
+            <div class="p-title">Roadmap Q3 — Notion</div>
+            <div class="p-url">notion.so</div>
+          </div>
+        </div>
+        <span class="p-badge b-asleep">Asleep</span>
+        <span class="p-action">Wake</span>
+      </div>
+
+      <div class="p-divider"></div>
+      <div class="p-row">
+        <div class="p-main">
+          <span class="p-fav">I</span>
+          <div class="p-info">
+            <div class="p-title">Inbox (14) - tsekulen@gmail.com</div>
+            <div class="p-url">mail.google.com</div>
+          </div>
+        </div>
+        <span class="p-badge b-pinned">Pinned</span>
+      </div>
+      <div class="p-row">
+        <div class="p-main">
+          <span class="p-fav">S</span>
+          <div class="p-info">
+            <div class="p-title">javascript - How do I free memory?</div>
+            <div class="p-url">stackoverflow.com</div>
+          </div>
+        </div>
+        <span class="p-action">Sleep</span>
+      </div>
+      <div class="p-row">
+        <div class="p-main">
+          <span class="p-fav">C</span>
+          <div class="p-info">
+            <div class="p-title">chrome.tabGroups API reference</div>
+            <div class="p-url">developer.chrome.com</div>
+          </div>
+        </div>
+        <span class="p-action">Sleep</span>
+      </div>
+    </div>
+  </body>
+</html>
