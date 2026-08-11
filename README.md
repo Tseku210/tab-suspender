@@ -8,8 +8,7 @@ A minimal Chrome/Brave browser extension (Manifest V3) for manually putting tabs
 
 ## Demo
 
-https://github.com/user-attachments/assets/30cf90ee-01ea-4eed-b647-cf6d624c21f7
-
+https://github.com/user-attachments/assets/a2910bf5-6f64-429c-a00a-19a95d994272
 
 ## Features
 
