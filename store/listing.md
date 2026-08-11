@@ -46,7 +46,7 @@ English
 
 ## Promotional video
 Paste into the "Promotional video" field on the Store listing tab (YouTube URL only — no file upload):
-https://youtu.be/gndLvlQxoVs
+https://youtu.be/d1diArNYcq0
 
 ## Assets
 - Store icon 128×128: `../icons/icon128.png`
