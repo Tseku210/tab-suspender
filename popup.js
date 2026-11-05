@@ -43,17 +43,34 @@ function getFaviconUrl(tab) {
   return "";
 }
 
+// A split view shows two tabs at once but only one is `active`; treat the
+// other half as on screen too so bulk sleep never blanks a visible pane.
+async function queryTabs() {
+  const tabs = await chrome.tabs.query({ currentWindow: true });
+  const shownSplit = tabs.find((t) => t.active)?.splitViewId;
+  for (const t of tabs) {
+    t.visible = t.active || (shownSplit > -1 && t.splitViewId === shownSplit);
+  }
+  return tabs;
+}
+
+function formatAge(ms) {
+  const m = Math.floor((Date.now() - ms) / 60000);
+  if (m < 60) return `${m}m`;
+  if (m < 1440) return `${Math.floor(m / 60)}h`;
+  return `${Math.floor(m / 1440)}d`;
+}
+
 function getTabBadges(tab) {
   const badges = [];
-  if (tab.active) badges.push({ label: "Active", class: "badge-active" });
-  if (tab.discarded) badges.push({ label: "Asleep", class: "badge-asleep" });
-  if (tab.pinned) badges.push({ label: "Pinned", class: "badge-pinned" });
-  if (tab.audible) badges.push({ label: "Playing", class: "badge-audible" });
+  if (tab.visible) badges.push("Active");
+  if (tab.pinned) badges.push("Pinned");
+  if (tab.audible) badges.push("Playing");
   return badges;
 }
 
 function canSleep(tab) {
-  if (tab.active || tab.pinned || tab.audible || tab.discarded) return false;
+  if (tab.visible || tab.pinned || tab.audible || tab.discarded) return false;
   if (isInternalUrl(tab.url)) return false;
   return true;
 }
@@ -93,10 +110,12 @@ function currentTheme() {
 }
 
 function applyTheme(theme) {
-  document.body.classList.toggle("light", theme === "light");
+  document.documentElement.style.colorScheme = theme;
   // Icon shows what clicking switches to.
-  document.getElementById("theme-toggle").textContent =
-    theme === "light" ? "☾" : "☀";
+  const toggle = document.getElementById("theme-toggle");
+  const next = theme === "light" ? "dark" : "light";
+  toggle.textContent = theme === "light" ? "☾" : "☀";
+  toggle.title = toggle.ariaLabel = `Switch to ${next} theme`;
 }
 
 applyTheme(currentTheme());
@@ -109,25 +128,23 @@ document.getElementById("theme-toggle").addEventListener("click", () => {
 
 // --- Sleep / wake ---
 
-async function sleepTabs(targets) {
-  await Promise.all(
-    targets.map((t) =>
-      chrome.tabs.discard(t.id).catch((err) => {
-        showError(`Could not put "${t.title}" to sleep: ${err.message}`);
-      })
-    )
-  );
+// One banner for the whole batch, so a bulk failure isn't reduced to
+// whichever tab happened to fail last.
+async function runOnTabs(targets, run, phrase) {
+  const results = await Promise.allSettled(targets.map((t) => run(t.id)));
+  const failed = targets.filter((_, i) => results[i].status === "rejected");
+  if (!failed.length) return;
+  const reason = results.find((r) => r.reason).reason.message;
+  const what =
+    failed.length === 1 ? `"${failed[0].title}"` : `${failed.length} tabs`;
+  showError(`Could not ${phrase(what)}: ${reason}`);
 }
 
-async function wakeTabs(targets) {
-  await Promise.all(
-    targets.map((t) =>
-      chrome.tabs.reload(t.id).catch((err) => {
-        showError(`Could not wake "${t.title}": ${err.message}`);
-      })
-    )
-  );
-}
+const sleepTabs = (targets) =>
+  runOnTabs(targets, (id) => chrome.tabs.discard(id), (w) => `put ${w} to sleep`);
+
+const wakeTabs = (targets) =>
+  runOnTabs(targets, (id) => chrome.tabs.reload(id), (w) => `wake ${w}`);
 
 // --- Select mode ---
 
@@ -150,19 +167,35 @@ function setSelectMode(on) {
 
 // --- Row construction ---
 
+function el(tag, className, text, parent) {
+  const node = document.createElement(tag);
+  node.className = className;
+  if (text) node.textContent = text;
+  if (tag === "button") node.type = "button";
+  parent?.appendChild(node);
+  return node;
+}
+
+function actionButton(label, run, parent) {
+  el("button", "tab-action", label, parent).addEventListener("click", (e) => {
+    e.stopPropagation();
+    run();
+  });
+}
+
 function createFaviconFallback(tab) {
-  const tile = document.createElement("span");
-  tile.className = "tab-favicon tab-favicon-fallback";
   const hostname = getHostname(tab.url || "");
-  tile.textContent = hostname ? hostname[0].toUpperCase() : "?";
-  return tile;
+  return el(
+    "span",
+    "tab-favicon tab-favicon-fallback",
+    hostname ? hostname[0].toUpperCase() : "?"
+  );
 }
 
 function createFavicon(tab) {
   const src = getFaviconUrl(tab);
   if (!src) return createFaviconFallback(tab);
-  const favicon = document.createElement("img");
-  favicon.className = "tab-favicon";
+  const favicon = el("img", "tab-favicon");
   favicon.alt = "";
   // Attach onerror BEFORE setting src so cached failures are still handled.
   favicon.onerror = () => favicon.replaceWith(createFaviconFallback(tab));
@@ -170,28 +203,12 @@ function createFavicon(tab) {
   return favicon;
 }
 
-function createActionButton(tab) {
-  if (!tab.discarded && !canSleep(tab)) return null;
-  const btn = document.createElement("button");
-  btn.className = "tab-action";
-  btn.type = "button";
-  btn.textContent = tab.discarded ? "Wake" : "Sleep";
-  btn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    if (tab.discarded) wakeTabs([tab]);
-    else sleepTabs([tab]);
-  });
-  return btn;
-}
-
 function createGroupHeader(group, groupTabs) {
   const sleepable = groupTabs.filter(canSleep);
   // In select mode the whole header is a toggle for the group's sleepable set.
   const clickable = selectMode && sleepable.length > 0;
-  const header = document.createElement(clickable ? "button" : "div");
-  header.className = "group-header";
+  const header = el(clickable ? "button" : "div", "group-header");
   if (clickable) {
-    header.type = "button";
     header.addEventListener("click", () => {
       const allSelected = sleepable.every((t) => selected.has(t.id));
       for (const t of sleepable) {
@@ -203,59 +220,37 @@ function createGroupHeader(group, groupTabs) {
     });
   }
 
-  const dot = document.createElement("span");
-  dot.className = "group-dot";
-  dot.style.background = GROUP_COLORS[group?.color] || GROUP_COLORS.grey;
-  header.appendChild(dot);
-
-  const name = document.createElement("span");
-  name.className = "group-name";
-  name.textContent = group?.title || "Untitled";
-  header.appendChild(name);
+  el("span", "group-dot", "", header).style.background =
+    GROUP_COLORS[group?.color] || GROUP_COLORS.grey;
+  el("span", "group-name", group?.title || "Untitled", header);
 
   if (!selectMode) {
     const asleep = groupTabs.filter((t) => t.discarded);
-    const action = sleepable.length
-      ? { label: "Sleep", run: () => sleepTabs(sleepable) }
-      : asleep.length
-        ? { label: "Wake", run: () => wakeTabs(asleep) }
-        : null;
-    if (action) {
-      const btn = document.createElement("button");
-      btn.className = "tab-action";
-      btn.type = "button";
-      btn.textContent = action.label;
-      btn.addEventListener("click", action.run);
-      header.appendChild(btn);
-    }
+    if (sleepable.length) actionButton("Sleep", () => sleepTabs(sleepable), header);
+    else if (asleep.length) actionButton("Wake", () => wakeTabs(asleep), header);
   }
 
   return header;
 }
 
 function createTabRow(tab) {
-  const item = document.createElement("div");
-  item.className = "tab-item";
-  if (tab.active) item.classList.add("is-active");
-  if (tab.discarded) item.classList.add("is-asleep");
-  if (selectMode) {
-    if (canSleep(tab)) {
-      item.classList.add("is-selectable");
-      if (selected.has(tab.id)) item.classList.add("is-selected");
-    } else {
-      item.classList.add("is-excluded");
-    }
-  }
+  const item = el("div", "tab-item");
+  const selectable = selectMode && canSleep(tab);
+  item.classList.toggle("is-active", tab.visible);
+  item.classList.toggle("is-asleep", !!tab.discarded);
+  item.classList.toggle("is-selected", selectable && selected.has(tab.id));
+  item.classList.toggle("is-excluded", selectMode && !selectable);
 
-  const main = document.createElement("button");
-  main.className = "tab-item-main";
-  main.type = "button";
+  const main = el("button", "tab-item-main", "", item);
+  main.dataset.id = tab.id;
+  if (selectable) main.ariaPressed = selected.has(tab.id);
   main.addEventListener("click", async () => {
     if (selectMode) {
-      if (!canSleep(tab)) return;
+      if (!selectable) return;
       if (selected.has(tab.id)) selected.delete(tab.id);
       else selected.add(tab.id);
       item.classList.toggle("is-selected", selected.has(tab.id));
+      main.ariaPressed = selected.has(tab.id);
       updateSelectCount();
       return;
     }
@@ -267,48 +262,36 @@ function createTabRow(tab) {
     }
   });
 
-  if (selectMode && canSleep(tab)) {
-    const checkbox = document.createElement("span");
-    checkbox.className = "tab-checkbox";
-    main.appendChild(checkbox);
+  if (selectable) el("span", "tab-checkbox", "", main).ariaHidden = true;
+  const icon = el("span", "tab-icon", "", main);
+  icon.appendChild(createFavicon(tab));
+  if (tab.discarded) {
+    icon.role = "img";
+    icon.title = icon.ariaLabel = "Asleep";
   }
 
-  main.appendChild(createFavicon(tab));
-
-  const info = document.createElement("div");
-  info.className = "tab-info";
-
-  const title = document.createElement("div");
-  title.className = "tab-title";
-  title.textContent = tab.title || "Untitled";
-  title.title = tab.title || "";
-
-  const url = document.createElement("div");
-  url.className = "tab-url";
-  url.textContent = getHostname(tab.url || "");
-
-  info.appendChild(title);
-  info.appendChild(url);
-  main.appendChild(info);
+  const info = el("div", "tab-info", "", main);
+  el("div", "tab-title", tab.title || "Untitled", info).title = tab.title || "";
+  const url = el("div", "tab-url", getHostname(tab.url || ""), info);
+  if (!tab.visible && tab.lastAccessed) {
+    el("span", "tab-age", formatAge(tab.lastAccessed), url).title = "Last used";
+  }
 
   const badges = getTabBadges(tab);
   if (badges.length) {
-    const container = document.createElement("div");
-    container.className = "tab-badges";
-    for (const status of badges) {
-      const badge = document.createElement("span");
-      badge.className = `tab-badge ${status.class}`;
-      badge.textContent = status.label;
-      container.appendChild(badge);
+    const container = el("div", "tab-badges", "", main);
+    for (const b of badges) {
+      el("span", `tab-badge badge-${b.toLowerCase()}`, b, container);
     }
-    main.appendChild(container);
   }
 
-  item.appendChild(main);
-
-  if (!selectMode && !tab.active && !isInternalUrl(tab.url)) {
-    const action = createActionButton(tab);
-    if (action) item.appendChild(action);
+  const canAct = tab.discarded || canSleep(tab);
+  if (!selectMode && !tab.visible && !isInternalUrl(tab.url) && canAct) {
+    actionButton(
+      tab.discarded ? "Wake" : "Sleep",
+      () => (tab.discarded ? wakeTabs([tab]) : sleepTabs([tab])),
+      item
+    );
   }
 
   return item;
@@ -316,8 +299,15 @@ function createTabRow(tab) {
 
 // --- Rendering ---
 
+const filterInput = document.getElementById("filter");
+
+function matchesFilter(tab) {
+  const q = filterInput.value.trim().toLowerCase();
+  return !q || `${tab.title || ""} ${getHostname(tab.url || "")}`.toLowerCase().includes(q);
+}
+
 async function renderTabs() {
-  const tabs = await chrome.tabs.query({ currentWindow: true });
+  const tabs = await queryTabs();
   // Group IDs are globally unique, so query all groups and match by id —
   // avoids WINDOW_ID_CURRENT resolution quirks in the popup context.
   let groups = [];
@@ -358,7 +348,7 @@ async function renderTabs() {
 
   const grouped = new Map();
   const ungrouped = [];
-  for (const tab of tabs) {
+  for (const tab of tabs.filter(matchesFilter)) {
     const gid = tab.groupId ?? TAB_GROUP_ID_NONE;
     if (gid === TAB_GROUP_ID_NONE) {
       ungrouped.push(tab);
@@ -377,14 +367,15 @@ async function renderTabs() {
     }
   }
   if (grouped.size && ungrouped.length) {
-    const divider = document.createElement("div");
-    divider.className = "section-divider";
-    fragment.appendChild(divider);
+    el("div", "section-divider", "", fragment);
   }
   for (const tab of ungrouped) {
     fragment.appendChild(createTabRow(tab));
   }
+  // Re-renders fire on any tab event; keep keyboard focus on the same row.
+  const focusedId = document.activeElement?.dataset.id;
   list.replaceChildren(fragment);
+  if (focusedId) list.querySelector(`[data-id="${focusedId}"]`)?.focus();
 }
 
 function safeRender() {
@@ -404,55 +395,54 @@ function scheduleRender() {
   }, RENDER_DEBOUNCE_MS);
 }
 
-chrome.tabs.onCreated.addListener(scheduleRender);
-chrome.tabs.onRemoved.addListener(scheduleRender);
-chrome.tabs.onUpdated.addListener(scheduleRender);
-chrome.tabs.onActivated.addListener(scheduleRender);
-chrome.tabs.onMoved.addListener(scheduleRender);
-chrome.tabs.onReplaced.addListener(scheduleRender);
-
-if (chrome.tabGroups) {
-  chrome.tabGroups.onCreated.addListener(scheduleRender);
-  chrome.tabGroups.onUpdated.addListener(scheduleRender);
-  chrome.tabGroups.onMoved.addListener(scheduleRender);
-  chrome.tabGroups.onRemoved.addListener(scheduleRender);
+for (const api of [chrome.tabs, chrome.tabGroups]) {
+  for (const event of [
+    "onCreated", "onRemoved", "onUpdated", "onActivated", "onMoved", "onReplaced",
+  ]) {
+    api?.[event]?.addListener(scheduleRender);
+  }
 }
+
+// --- Filter and keyboard navigation ---
+
+filterInput.addEventListener("input", safeRender);
+
+document.addEventListener("keydown", (e) => {
+  const rows = [...document.querySelectorAll(".tab-item-main")];
+  if (e.target === filterInput && e.key === "Enter") {
+    rows[0]?.click();
+    return;
+  }
+  if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+  e.preventDefault();
+  const i = rows.indexOf(document.activeElement);
+  const next = i + (e.key === "ArrowDown" ? 1 : -1);
+  if (next < 0) filterInput.focus();
+  else rows[Math.min(next, rows.length - 1)]?.focus();
+});
 
 // --- Bulk actions ---
 
-document.getElementById("sleep-others").addEventListener("click", async () => {
-  try {
-    const tabs = await chrome.tabs.query({ currentWindow: true });
-    await sleepTabs(tabs.filter(canSleep));
-  } catch (err) {
-    showError(`Could not put tabs to sleep: ${err.message}`);
-  }
-});
+function onBulk(id, run, pick) {
+  document.getElementById(id).addEventListener("click", async () => {
+    try {
+      await run((await queryTabs()).filter(pick));
+    } catch (err) {
+      showError(`Could not load tabs: ${err.message}`);
+    }
+    if (selectMode) setSelectMode(false);
+  });
+}
 
-document.getElementById("wake-all").addEventListener("click", async () => {
-  try {
-    const tabs = await chrome.tabs.query({ currentWindow: true });
-    await wakeTabs(tabs.filter((t) => t.discarded));
-  } catch (err) {
-    showError(`Could not wake tabs: ${err.message}`);
-  }
-});
+onBulk("sleep-others", sleepTabs, canSleep);
+onBulk("wake-all", wakeTabs, (t) => t.discarded);
+onBulk("sleep-selected", sleepTabs, (t) => selected.has(t.id) && canSleep(t));
 
 document.getElementById("select-toggle").addEventListener("click", () => {
   setSelectMode(true);
 });
 
 document.getElementById("select-cancel").addEventListener("click", () => {
-  setSelectMode(false);
-});
-
-document.getElementById("sleep-selected").addEventListener("click", async () => {
-  try {
-    const tabs = await chrome.tabs.query({ currentWindow: true });
-    await sleepTabs(tabs.filter((t) => selected.has(t.id) && canSleep(t)));
-  } catch (err) {
-    showError(`Could not put tabs to sleep: ${err.message}`);
-  }
   setSelectMode(false);
 });
 

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Tab Suspender",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Manually put tabs to sleep to free up memory without closing them.",
   "permissions": ["tabs", "tabGroups"],
   "action": {
@@ -11,6 +11,11 @@
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",
       "128": "icons/icon128.png"
+    }
+  },
+  "commands": {
+    "_execute_action": {
+      "suggested_key": { "default": "Alt+Shift+S" }
     }
   },
   "icons": {

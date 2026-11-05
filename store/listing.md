@@ -26,7 +26,7 @@ Tab Suspender is deliberately minimal, and it's measurable:
 • Fully manual — nothing is put to sleep unless you say so
 • Pinned tabs, tabs playing audio, and your active tab are never touched
 • No background process at all — when the popup is closed, the extension isn't running. Zero idle memory, zero idle CPU.
-• Under 14 KB installed — vanilla JavaScript, zero dependencies, no frameworks
+• Under 15 KB installed — vanilla JavaScript, zero dependencies, no frameworks
 • No data collection of any kind — the extension never leaves your browser
 
 Uses Chrome's native tab discarding, the same mechanism Chrome itself uses under memory pressure. The extension itself uses less memory than one of the tabs it puts to sleep.
