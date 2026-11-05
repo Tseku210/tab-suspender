@@ -20,3 +20,5 @@ jobs:
         run: npx --yes eslint@9 popup.js
       - name: Package zip builds
         run: bash scripts/package.sh
+      - name: Size and minimalism budget
+        run: bash scripts/check-budget.sh
